@@ -1,0 +1,10 @@
+
+parameters:
+    paths:
+        - %currentWorkingDirectory%/src
+        - %currentWorkingDirectory%/application.php
+    reportUnmatchedIgnoredErrors: false
+    level: 8
+    inferPrivatePropertyTypeFromConstructor: true
+    parallel:
+        maximumNumberOfProcesses: 2
