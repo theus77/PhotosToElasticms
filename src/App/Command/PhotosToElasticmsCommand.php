@@ -155,11 +155,11 @@ class PhotosToElasticmsCommand extends AbstractCommand
                 $this->io->progressAdvance();
                 continue;
             }
-            if ($this->coreApi->headFile($realPath)) {
+            if ($this->coreApi->file()->headFile($realPath)) {
                 $this->io->progressAdvance();
                 continue;
             }
-            if (null !== $this->coreApi->uploadFile($realPath, $filename)) {
+            if (null !== $this->coreApi->file()->uploadFile($realPath, $filename)) {
                 ++$uploadedCounter;
             }
             $this->io->progressAdvance();
@@ -267,7 +267,7 @@ class PhotosToElasticmsCommand extends AbstractCommand
             if (false === $realPath) {
                 throw new \RuntimeException('Unexpected false path');
             }
-            $hash = $this->coreApi->hashFile($realPath);
+            $hash = $this->coreApi->file()->hashFile($realPath);
             $file = [
                 'sha1' => $hash,
                 'filename' => $fileItem->getFilename(),
@@ -276,8 +276,8 @@ class PhotosToElasticmsCommand extends AbstractCommand
             ];
         }
 
-        if (false !== $derivative && false !== $realPath && !$this->coreApi->headFile($realPath)) {
-            $this->coreApi->uploadFile($realPath, $derivative->getFilename());
+        if (false !== $derivative && false !== $realPath && !$this->coreApi->file()->headFile($realPath)) {
+            $this->coreApi->file()->uploadFile($realPath, $derivative->getFilename());
         }
 
         return $file;
