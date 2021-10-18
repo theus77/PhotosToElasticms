@@ -188,7 +188,7 @@ class PhotosToElasticmsCommand extends AbstractCommand
 
         $ouuid = $this->getOUUID($this->libraryContentType, $this->photosPath);
         $dataApi = $this->coreApi->data($this->libraryContentType);
-        $dataApi->createOrUpdateAndFinalize($ouuid, $raw);
+        $dataApi->save($ouuid, $raw);
     }
 
     /**
@@ -205,7 +205,6 @@ class PhotosToElasticmsCommand extends AbstractCommand
     }
 
     /**
-     * @param int $id
      * @return string[]
      */
     private function getAssetsForAlbum(int $id): array
@@ -222,7 +221,7 @@ class PhotosToElasticmsCommand extends AbstractCommand
         return $assets;
     }
 
-    private function importAssets()
+    private function importAssets(): void
     {
         $results = $this->db->query('select ZASSET.ZUUID as ZUUID, ZASSET.Z_PK as ID,  ZADDITIONALASSETATTRIBUTES.ZORIGINALFILENAME as FILENAME from ZADDITIONALASSETATTRIBUTES, ZASSET where ZASSET.ZEXTENDEDATTRIBUTES = ZADDITIONALASSETATTRIBUTES.Z_PK');
         if (false === $results) {
@@ -233,7 +232,7 @@ class PhotosToElasticmsCommand extends AbstractCommand
         $dataApi = $this->coreApi->data($this->assetContentType);
         while ($row = $results->fetchArray()) {
             $ouuid = $this->getOUUID($this->assetContentType, $row['ID']);
-            $dataApi->createOrUpdateAndFinalize($ouuid, [
+            $dataApi->save($ouuid, [
                 'filename' => $row['FILENAME'],
                 'file' => $this->getAsset($row['ZUUID']),
             ]);
@@ -242,6 +241,9 @@ class PhotosToElasticmsCommand extends AbstractCommand
         $this->io->progressFinish();
     }
 
+    /**
+     * @return array<string, string|int>
+     */
     private function getAsset(string $uuid): array
     {
         $finder = new Finder();
@@ -254,24 +256,28 @@ class PhotosToElasticmsCommand extends AbstractCommand
         $size = 0;
         $file = [];
         $derivative = false;
+        $realPath = false;
         foreach ($finder as $fileItem) {
             if ($fileItem->getSize() <= $size) {
                 continue;
             }
             $size = $fileItem->getSize();
-            $hash = $this->coreApi->hashFile($fileItem->getRealPath());
             $derivative = $fileItem;
+            $realPath = $fileItem->getRealPath();
+            if (false === $realPath) {
+                throw new \RuntimeException('Unexpected false path');
+            }
+            $hash = $this->coreApi->hashFile($realPath);
             $file = [
                 'sha1' => $hash,
                 'filename' => $fileItem->getFilename(),
-                'mimetype' => $this->mimeTypeGuesser->guess($fileItem->getRealPath()) ?? 'application/octet-stream',
+                'mimetype' => $this->mimeTypeGuesser->guess($realPath) ?? 'application/octet-stream',
                 'filesize' => $fileItem->getSize(),
             ];
         }
 
-
-        if (false !== $derivative && !$this->coreApi->headFile($derivative->getRealPath())) {
-            $this->coreApi->uploadFile($derivative->getRealPath(), $derivative->getFilename());
+        if (false !== $derivative && false !== $realPath && !$this->coreApi->headFile($realPath)) {
+            $this->coreApi->uploadFile($realPath, $derivative->getFilename());
         }
 
         return $file;
